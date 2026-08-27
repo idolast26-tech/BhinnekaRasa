@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+/* Custom animations */
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-in;
+  }
+  
+  .animate-scale-in {
+    animation: scaleIn 0.8s ease-out;
+  }
+  
+  .animate-slide-up {
+    animation: slideUp 0.8s ease-out 0.5s both;
+  }
+  
+  .animate-slide-up-delayed {
+    animation: slideUp 0.8s ease-out 0.7s both;
+  }
+  
+  .animate-draw-fork {
+    animation: drawFork 1s ease-out;
+  }
+  
+  .animate-draw-spoon {
+    animation: drawSpoon 1s ease-out 0.3s both;
+  }
+  
+  .text-shadow-lg {
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes drawFork {
+  from { stroke-dasharray: 200; stroke-dashoffset: 200; }
+  to { stroke-dasharray: 200; stroke-dashoffset: 0; }
+}
+
+@keyframes drawSpoon {
+  from { transform: scale(0); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}

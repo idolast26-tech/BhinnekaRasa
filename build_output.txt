@@ -1,0 +1,46 @@
+﻿
+> kuliermedanfood@0.0.0 build
+> tsc -b && vite build
+
+src/context/AppContext.tsx(1,47): error TS1484: 'ReactNode' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/features/akulturasi/DapurAkulturasi.tsx(49,46): error TS2345: Argument of type 'number | null' is not assignable to parameter of type 'SetStateAction<null>'.
+  Type 'number' is not assignable to type 'SetStateAction<null>'.
+src/features/food/FoodDetail.tsx(10,41): error TS2345: Argument of type 'number | undefined' is not assignable to parameter of type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+src/features/map/FoodMap.tsx(6,10): error TS6133: 'DollarSign' is declared but its value is never read.
+src/features/map/FoodMap.tsx(6,30): error TS6133: 'ChevronDown' is declared but its value is never read.
+src/features/map/FoodMap.tsx(7,28): error TS6133: 'MoreHorizontal' is declared but its value is never read.
+src/features/map/FoodMap.tsx(7,52): error TS6133: 'MenuIcon' is declared but its value is never read.
+src/features/map/FoodMap.tsx(8,26): error TS6133: 'Check' is declared but its value is never read.
+src/features/map/FoodMap.tsx(8,46): error TS6133: 'Send' is declared but its value is never read.
+src/features/map/FoodMap.tsx(8,52): error TS6133: 'Filter' is declared but its value is never read.
+src/features/map/FoodMap.tsx(9,28): error TS6133: 'Calendar' is declared but its value is never read.
+src/features/map/FoodMap.tsx(9,38): error TS6133: 'User' is declared but its value is never read.
+src/features/map/FoodMap.tsx(43,24): error TS6133: 'setSelectedFood' is declared but its value is never read.
+src/features/map/FoodMap.tsx(69,26): error TS7006: Parameter 'reviewId' implicitly has an 'any' type.
+src/features/map/FoodMap.tsx(72,20): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{}'.
+src/features/map/FoodMap.tsx(451,31): error TS7053: Element implicitly has an 'any' type because expression of type 'number' can't be used to index type '{}'.
+  No index signature with a parameter of type 'number' was found on type '{}'.
+src/features/map/FoodMap.tsx(455,64): error TS7053: Element implicitly has an 'any' type because expression of type 'number' can't be used to index type '{}'.
+  No index signature with a parameter of type 'number' was found on type '{}'.
+src/features/quiz/MainQuiz.tsx(10,52): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/features/quiz/MainQuiz.tsx(16,25): error TS7006: Parameter 'isCorrect' implicitly has an 'any' type.
+src/features/quiz/MainQuiz.tsx(23,29): error TS18048: 'quiz' is possibly 'undefined'.
+src/features/quiz/MainQuiz.tsx(28,23): error TS18048: 'quiz' is possibly 'undefined'.
+src/features/quiz/PersonalityQuiz.tsx(10,52): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/features/quiz/PersonalityQuiz.tsx(16,25): error TS7006: Parameter 'food' implicitly has an 'any' type.
+src/features/quiz/PersonalityQuiz.tsx(18,16): error TS2345: Argument of type 'any[]' is not assignable to parameter of type 'SetStateAction<never[]>'.
+  Type 'any[]' is not assignable to type 'never[]'.
+    Type 'any' is not assignable to type 'never'.
+src/features/quiz/PersonalityQuiz.tsx(20,27): error TS18048: 'quiz' is possibly 'undefined'.
+src/features/quiz/PersonalityQuiz.tsx(26,9): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{}'.
+src/features/quiz/PersonalityQuiz.tsx(26,28): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{}'.
+src/features/quiz/PersonalityQuiz.tsx(29,9): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{}'.
+  No index signature with a parameter of type 'string' was found on type '{}'.
+src/features/quiz/PersonalityQuiz.tsx(29,24): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{}'.
+  No index signature with a parameter of type 'string' was found on type '{}'.
+src/features/quiz/PersonalityQuiz.tsx(31,17): error TS2345: Argument of type 'string' is not assignable to parameter of type 'SetStateAction<null>'.
+src/features/quiz/PersonalityQuiz.tsx(33,21): error TS18048: 'quiz' is possibly 'undefined'.
+src/pages/ChatPage.tsx(8,23): error TS7006: Parameter 'e' implicitly has an 'any' type.

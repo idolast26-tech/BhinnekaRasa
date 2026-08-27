@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Background circle gradient -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#f97316"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </linearGradient>
+    <linearGradient id="bowl" x1="16" y1="28" x2="48" y2="52" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#fff7ed"/>
+      <stop offset="100%" stop-color="#fed7aa"/>
+    </linearGradient>
+    <linearGradient id="steam" x1="0" y1="0" x2="0" y2="1" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.7"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Outer circle background -->
+  <circle cx="32" cy="32" r="31" fill="url(#bg)"/>
+
+  <!-- Decorative batik ring dots -->
+  <circle cx="32" cy="3"  r="1.5" fill="#fbbf24" opacity="0.8"/>
+  <circle cx="32" cy="61" r="1.5" fill="#fbbf24" opacity="0.8"/>
+  <circle cx="3"  cy="32" r="1.5" fill="#fbbf24" opacity="0.8"/>
+  <circle cx="61" cy="32" r="1.5" fill="#fbbf24" opacity="0.8"/>
+  <circle cx="9"  cy="9"  r="1.2" fill="#fbbf24" opacity="0.6"/>
+  <circle cx="55" cy="9"  r="1.2" fill="#fbbf24" opacity="0.6"/>
+  <circle cx="9"  cy="55" r="1.2" fill="#fbbf24" opacity="0.6"/>
+  <circle cx="55" cy="55" r="1.2" fill="#fbbf24" opacity="0.6"/>
+
+  <!-- Bowl body -->
+  <path d="M15 32 Q15 50 32 52 Q49 50 49 32 Z" fill="url(#bowl)" stroke="#ea580c" stroke-width="1.2"/>
+
+  <!-- Bowl rim -->
+  <rect x="14" y="29" width="36" height="5" rx="2.5" fill="#fff7ed" stroke="#ea580c" stroke-width="1.2"/>
+
+  <!-- Soup surface inside bowl -->
+  <ellipse cx="32" cy="34" rx="15" ry="4" fill="#fb923c" opacity="0.4"/>
+
+  <!-- Steam lines -->
+  <path d="M24 27 Q22 22 24 17" stroke="white" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.85"/>
+  <path d="M32 26 Q30 20 32 14" stroke="white" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.85"/>
+  <path d="M40 27 Q42 22 40 17" stroke="white" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.85"/>
+
+  <!-- Chopstick / spoon accent -->
+  <line x1="44" y1="16" x2="38" y2="38" stroke="#fbbf24" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="44" cy="15" r="2" fill="#fbbf24"/>
+</svg>

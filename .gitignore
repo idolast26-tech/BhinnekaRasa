@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+backend/node_modules/
+
+# Build output
+dist/
+build/
+backend/dist/
+
+# Environment variables (JANGAN UPLOAD!)
+.env
+.env.local
+.env.production
+backend/.env
+
+# Database files (dikecualikan agar data tetap ada di repo)
+# *.db — JANGAN diabaikan, perlu untuk production
+*.sqlite3
+backend/database/
+backend/data/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Misc
+.cache/
+.temp/
+coverage/
