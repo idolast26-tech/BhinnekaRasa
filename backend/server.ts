@@ -24,9 +24,7 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Izinkan request tanpa origin (mobile app, curl, dll)
     if (!origin) return callback(null, true)
-    // Izinkan semua subdomain vercel.app
     if (origin.endsWith('.vercel.app') || allowedOrigins.includes(origin)) {
       return callback(null, true)
     }
@@ -34,6 +32,7 @@ app.use(cors({
   },
   credentials: true,
 }));
+app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 app.use('/api', apiRoutes);
