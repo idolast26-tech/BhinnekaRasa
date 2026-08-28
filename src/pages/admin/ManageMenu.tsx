@@ -273,6 +273,7 @@ export default function ManageMenu() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (saving) return // guard: cegah submit dobel/berulang selagi masih proses menyimpan
     if (!step0Valid) { setStep(0); setStepError('Nama menu dan deskripsi wajib diisi dulu ya 😊'); return }
     setSaving(true)
     try {
