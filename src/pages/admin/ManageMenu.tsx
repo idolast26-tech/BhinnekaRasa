@@ -209,6 +209,7 @@ export default function ManageMenu() {
         if (Array.isArray(d.steps) && d.steps.length) setStepList(d.steps.map(String))
         if (Array.isArray(d.spices) && d.spices.length) update({ spices: d.spices.join('\n') })
         if (typeof d.history === 'string' && d.history) update({ history: d.history })
+        if (typeof d.journey === 'string' && d.journey) update({ journey: d.journey })
         notify('success', 'Resep & sejarah dibuat AI! Silakan cek dan edit ✨')
       } else {
         notify('error', data.message || 'AI gagal membuat resep')
@@ -783,7 +784,7 @@ export default function ManageMenu() {
                     </button>
                   </div>
 
-                  {/* Sejarah & Nutrisi */}
+                  {/* Cerita, Akulturasi, Bumbu, & Nutrisi */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="md:col-span-2">
                       <Label text="Sejarah / Cerita Menu" optional />
@@ -795,6 +796,30 @@ export default function ManageMenu() {
                         className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none" 
                       />
                     </div>
+
+                    <div className="md:col-span-2">
+                      <Label text="Perjalanan / Jejak Akulturasi" optional />
+                      <textarea 
+                        value={formData.journey} 
+                        onChange={e => update({ journey: e.target.value })} 
+                        rows={3}
+                        placeholder="Bagaimana resep ini berpindah & berbaur antar budaya..."
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none" 
+                      />
+                      <Tip>Ceritakan bagaimana menu ini menyebar dan beradaptasi dengan budaya lokal.</Tip>
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <Label text="Bumbu & Rempah" optional />
+                      <textarea 
+                        value={formData.spices} 
+                        onChange={e => update({ spices: e.target.value })} 
+                        rows={2}
+                        placeholder="Satu per baris, cth:&#10;Ketumbar&#10;Jintan"
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none" 
+                      />
+                    </div>
+
                     <div className="md:col-span-2">
                       <Label text="Nilai Gizi" optional />
                       <textarea 
