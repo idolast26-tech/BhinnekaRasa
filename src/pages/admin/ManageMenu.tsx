@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Plus, Edit2, Trash2, Save, X, Search, ChefHat, Star,
   Upload, Link as LinkIcon, Image as ImageIcon, AlertCircle, Check,
-  Leaf, Info, Sparkles, UtensilsCrossed, Hash, Building2
+  Leaf, Info, Sparkles, UtensilsCrossed, Hash, Building2,
+  ChevronUp, ChevronDown  
 } from 'lucide-react'
 import { adminFetch } from '../../services/adminApi'
 import API_BASE_URL from '../../config/api'
