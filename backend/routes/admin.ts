@@ -175,16 +175,18 @@ router.get('/dishes', (req: AuthRequest, res: Response) => {
 
 router.post('/dishes', (req: AuthRequest, res: Response) => {
     try {
-        const { name, description, history, ingredients, nutrition, image, category, price, is_popular } = req.body;
+        // TAMBAHKAN: journey, spices, cooking_steps di sini
+        const { name, description, history, ingredients, nutrition, image, category, price, is_popular, journey, spices, cooking_steps } = req.body;
 
         if (!name || !description) {
             return res.status(400).json({ success: false, message: 'Nama dan deskripsi wajib diisi' });
         }
 
+        // TAMBAHKAN kolom journey, spices, cooking_steps di query
         const stmt = db.prepare(`
-      INSERT INTO dishes (name, description, history, ingredients, nutrition, image, category, price, is_popular)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
+            INSERT INTO dishes (name, description, history, ingredients, nutrition, image, category, price, is_popular, journey, spices, cooking_steps)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
         const result = stmt.run(
             name,
             description,
@@ -194,7 +196,10 @@ router.post('/dishes', (req: AuthRequest, res: Response) => {
             image || '',
             category || '',
             price || 0,
-            is_popular ? 1 : 0
+            is_popular ? 1 : 0,
+            journey || '',          
+            spices || '',           
+            cooking_steps || ''    
         );
         const newDish = db.prepare('SELECT * FROM dishes WHERE id = ?').get(result.lastInsertRowid);
         res.status(201).json({ success: true, data: newDish });
@@ -206,13 +211,15 @@ router.post('/dishes', (req: AuthRequest, res: Response) => {
 router.put('/dishes/:id', (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
-        const { name, description, history, ingredients, nutrition, image, category, price, is_popular } = req.body;
+        // TAMBAHKAN: journey, spices, cooking_steps di sini
+        const { name, description, history, ingredients, nutrition, image, category, price, is_popular, journey, spices, cooking_steps } = req.body;
 
+        // TAMBAHKAN kolom journey, spices, cooking_steps di query UPDATE
         const stmt = db.prepare(`
-      UPDATE dishes 
-      SET name=?, description=?, history=?, ingredients=?, nutrition=?, image=?, category=?, price=?, is_popular=?
-      WHERE id=?
-    `);
+            UPDATE dishes 
+            SET name=?, description=?, history=?, ingredients=?, nutrition=?, image=?, category=?, price=?, is_popular=?, journey=?, spices=?, cooking_steps=?
+            WHERE id=?
+        `);
         stmt.run(
             name,
             description,
@@ -223,6 +230,9 @@ router.put('/dishes/:id', (req: AuthRequest, res: Response) => {
             category || '',
             price || 0,
             is_popular ? 1 : 0,
+            journey || '',          
+            spices || '',           
+            cooking_steps || '',   
             id
         );
         const updatedDish = db.prepare('SELECT * FROM dishes WHERE id = ?').get(id);
