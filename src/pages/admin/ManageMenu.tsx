@@ -1,10 +1,9 @@
-import { useState, useEffect, useRef, Fragment } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Plus, Edit2, Trash2, Save, X, Search, ChefHat, Star,
   Upload, Link as LinkIcon, Image as ImageIcon, AlertCircle, Check,
-  Leaf, Flame, BookOpen, Info, Sparkles, ChevronLeft, ChevronRight,
-  ChevronUp, ChevronDown
+  Leaf, Info, Sparkles, UtensilsCrossed, Hash, Building2
 } from 'lucide-react'
 import { adminFetch } from '../../services/adminApi'
 import API_BASE_URL from '../../config/api'
@@ -22,8 +21,8 @@ interface FormData {
 }
 
 type ImageMode = 'url' | 'upload'
+type TabType = 'basic' | 'image' | 'recipe'
 
-// ⚙️ 'json' → ["a","b"] | 'lines' → "a\nb" (sesuaikan backend kamu)
 const LIST_FORMAT: 'json' | 'lines' = 'json'
 
 const CATEGORIES = [
@@ -33,7 +32,6 @@ const CATEGORIES = [
   { value: 'Mie', emoji: '🍜', color: 'bg-orange-50 text-orange-700 border-orange-200' },
 ]
 
-// Bahan yang sering dipakai — tinggal tap untuk menambahkan
 const COMMON_INGREDIENTS = [
   'Bawang merah', 'Bawang putih', 'Garam', 'Gula', 'Santan', 'Cabai merah',
   'Kemiri', 'Kunyit', 'Jahe', 'Lengkuas', 'Serai', 'Daun jeruk', 'Minyak goreng', 'Air',
@@ -46,13 +44,6 @@ const EMPTY_FORM: FormData = {
 }
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024
-
-const STEPS = [
-  { icon: Info, label: 'Info Menu' },
-  { icon: ImageIcon, label: 'Gambar' },
-  { icon: ChefHat, label: 'Bahan & Langkah' },
-  { icon: BookOpen, label: 'Sejarah & Cerita' },
-]
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const toLines = (v: unknown): string => {
@@ -90,16 +81,14 @@ const ingEmoji = (n: string): string => {
 
 function Label({ text, required, optional }: { text: string; required?: boolean; optional?: boolean }) {
   return (
-    <div className="flex items-center gap-2 mb-1.5">
-      <span className="text-sm font-semibold text-gray-700">{text}</span>
-      {required && <span className="text-[10px] font-bold text-white bg-red-400 px-1.5 py-0.5 rounded-full">WAJIB</span>}
-      {optional && <span className="text-[10px] font-bold text-gray-500 bg-gray-200 px-1.5 py-0.5 rounded-full">OPSIONAL</span>}
-    </div>
+    <label className="block text-sm font-semibold text-gray-700 mb-2">
+      {text} {required && <span className="text-red-500">*</span>} {optional && <span className="text-gray-400 font-normal text-xs">(Opsional)</span>}
+    </label>
   )
 }
 
 function Tip({ children }: { children: React.ReactNode }) {
-  return <p className="text-xs text-gray-400 mt-1.5 flex items-start gap-1"><span>💡</span><span>{children}</span></p>
+  return <p className="text-xs text-gray-500 mt-1.5 flex items-start gap-1"><span>💡</span><span>{children}</span></p>
 }
 
 // ─── Main Component ──────────────────────────────────────────────────────────
@@ -109,14 +98,13 @@ export default function ManageMenu() {
 
   const [dishes, setDishes] = useState<Dish[]>([])
   const [loading, setLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [categoryFilter, setCategoryFilter] = useState('Semua')
-
-  const [showForm, setShowForm] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  
+  const [showModal, setShowModal] = useState(false)
   const [editingDish, setEditingDish] = useState<Dish | null>(null)
+  const [activeTab, setActiveTab] = useState<TabType>('basic')
+  
   const [formData, setFormData] = useState<FormData>(EMPTY_FORM)
-  const [step, setStep] = useState(0)
-  const [stepError, setStepError] = useState('')
   const [imageMode, setImageMode] = useState<ImageMode>('url')
   const [imageError, setImageError] = useState<string | null>(null)
   const [dragging, setDragging] = useState(false)
@@ -124,7 +112,6 @@ export default function ManageMenu() {
   const [aiLoading, setAiLoading] = useState(false)
   const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
 
-  // ✨ Builder bahan & langkah (lebih mudah dari textarea)
   const [ingredientList, setIngredientList] = useState<string[]>([])
   const [ingInput, setIngInput] = useState('')
   const [stepList, setStepList] = useState<string[]>([])
@@ -149,7 +136,6 @@ export default function ManageMenu() {
     }
   }
 
-  // ─── Gambar ───────────────────────────────────────────────────────────────
   const processFile = async (file: File) => {
     setImageError(null)
     if (!file.type.startsWith('image/')) { setImageError('File harus berupa gambar (JPG/PNG)'); return }
@@ -184,7 +170,6 @@ export default function ManageMenu() {
     }
   }
 
-  // ─── Builder: bahan ───────────────────────────────────────────────────────
   const addIngredient = (raw: string) => {
     const lines = raw.split('\n').map(s => s.trim()).filter(Boolean)
     if (!lines.length) return
@@ -197,8 +182,6 @@ export default function ManageMenu() {
   }
 
   const removeIngredient = (i: number) => setIngredientList(l => l.filter((_, idx) => idx !== i))
-
-  // ─── Builder: langkah ─────────────────────────────────────────────────────
   const addStep = () => setStepList(l => [...l, ''])
   const updateStep = (i: number, val: string) => setStepList(l => l.map((s, idx) => (idx === i ? val : s)))
   const removeStep = (i: number) => setStepList(l => l.filter((_, idx) => idx !== i))
@@ -210,9 +193,8 @@ export default function ManageMenu() {
     return next
   })
 
-  // ─── ✨ AI generate ───────────────────────────────────────────────────────
   const handleAiGenerate = async () => {
-    if (!formData.name.trim()) { setStep(0); setStepError('Isi nama menu dulu ya, biar AI tahu mau buat apa 😊'); return }
+    if (!formData.name.trim()) { setActiveTab('basic'); notify('error', 'Isi nama menu dulu ya, biar AI tahu mau buat apa 😊'); return }
     setAiLoading(true)
     try {
       const res = await adminFetch(`${API_BASE_URL}/ai/generate-recipe`, {
@@ -226,31 +208,22 @@ export default function ManageMenu() {
         if (Array.isArray(d.steps) && d.steps.length) setStepList(d.steps.map(String))
         if (Array.isArray(d.spices) && d.spices.length) update({ spices: d.spices.join('\n') })
         if (typeof d.history === 'string' && d.history) update({ history: d.history })
-        notify('success', 'Resep & sejarah dibuat AI! Silakan cek dan edit sesuka hati ✨')
+        notify('success', 'Resep & sejarah dibuat AI! Silakan cek dan edit ✨')
       } else {
         notify('error', data.message || 'AI gagal membuat resep')
       }
     } catch {
-      notify('error', 'Fitur AI belum tersedia di backend (lihat panduan route /api/ai)')
+      notify('error', 'Fitur AI belum tersedia di backend')
     } finally {
       setAiLoading(false)
     }
   }
 
-  // ─── Wizard ──────────────────────────────────────────────────────────────
-  const step0Valid = formData.name.trim() !== '' && formData.description.trim() !== ''
-
-  const handleNext = () => {
-    if (step === 0 && !step0Valid) { setStepError('Nama menu dan deskripsi wajib diisi dulu ya 😊'); return }
-    setStepError('')
-    setStep(s => Math.min(s + 1, STEPS.length - 1))
-  }
-
   const openAddForm = () => {
-    setEditingDish(null); setFormData(EMPTY_FORM); setStep(0); setStepError('')
+    setEditingDish(null); setFormData(EMPTY_FORM); setActiveTab('basic')
     setImageMode('url'); setImageError(null)
     setIngredientList([]); setStepList([]); setIngInput('')
-    setShowForm(true)
+    setShowModal(true)
   }
 
   const openEditForm = (dish: Dish) => {
@@ -264,17 +237,22 @@ export default function ManageMenu() {
     })
     setIngredientList(toList(dish.ingredients))
     setStepList(toList(dish.cooking_steps))
-    setIngInput('')
-    setStep(0); setStepError(''); setImageError(null)
-    setShowForm(true)
+    setIngInput(''); setImageError(null)
+    setActiveTab('basic')
+    setShowModal(true)
   }
 
-  const closeModal = () => { setShowForm(false); setEditingDish(null); setFormData(EMPTY_FORM); setStep(0) }
+  const resetForm = () => {
+    setFormData(EMPTY_FORM); setEditingDish(null); setActiveTab('basic')
+    setImageMode('url'); setImageError(null)
+    setIngredientList([]); setStepList([]); setIngInput('')
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (saving) return // guard: cegah submit dobel/berulang selagi masih proses menyimpan
-    if (!step0Valid) { setStep(0); setStepError('Nama menu dan deskripsi wajib diisi dulu ya 😊'); return }
+    if (saving) return
+    if (!formData.name.trim()) { notify('error', 'Nama menu wajib diisi'); return }
+    
     setSaving(true)
     try {
       const url = editingDish ? `${API_BASE_URL}/admin/dishes/${editingDish.id}` : `${API_BASE_URL}/admin/dishes`
@@ -288,7 +266,9 @@ export default function ManageMenu() {
       const data = await res.json()
       if (data.success) {
         notify('success', editingDish ? 'Menu berhasil diupdate! 🎉' : 'Menu baru berhasil ditambahkan! 🎉')
-        fetchDishes(); closeModal()
+        await fetchDishes()
+        setShowModal(false)
+        resetForm()
       } else notify('error', data.message || 'Gagal menyimpan')
     } catch {
       notify('error', 'Terjadi kesalahan!')
@@ -300,227 +280,356 @@ export default function ManageMenu() {
     try {
       const res = await adminFetch(`${API_BASE_URL}/admin/dishes/${id}`, { method: 'DELETE' })
       const data = await res.json()
-      if (data.success) { notify('success', 'Menu berhasil dihapus!'); fetchDishes() }
+      if (data.success) { notify('success', 'Menu berhasil dihapus!'); await fetchDishes() }
       else notify('error', data.message || 'Gagal menghapus')
     } catch { notify('error', 'Gagal menghapus menu!') }
   }
 
   const filteredDishes = dishes.filter(d =>
-    (categoryFilter === 'Semua' || d.category === categoryFilter) &&
-    (d.name.toLowerCase().includes(searchQuery.toLowerCase()) || (d.category || '').toLowerCase().includes(searchQuery.toLowerCase()))
+    d.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    (d.category || '').toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   const getCategory = (cat: string) => CATEGORIES.find(c => c.value === cat)
 
   if (loading) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3">
-        <div className="animate-spin w-10 h-10 border-4 border-amber-200 border-t-amber-600 rounded-full"></div>
-        <p className="text-gray-500 text-sm">Memuat menu...</p>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-amber-200 border-t-amber-600 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">Memuat data menu...</p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-amber-50">
-      {/* Header */}
-      <div className="bg-white/80 backdrop-blur border-b border-amber-100 sticky top-0 z-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <button onClick={() => navigate('/admin')} className="p-2 hover:bg-amber-50 rounded-lg shrink-0 transition">
-              <ArrowLeft className="w-5 h-5 text-gray-700" />
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        
+        {/* Header */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <button 
+                onClick={() => navigate('/admin')}
+                className="p-2.5 hover:bg-gray-100 rounded-xl transition-colors border border-gray-200"
+              >
+                <ArrowLeft className="w-5 h-5 text-gray-600" />
+              </button>
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl shadow-lg shadow-amber-200">
+                  <ChefHat className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-800">Kelola Menu Restoran</h1>
+                  <p className="text-gray-500 text-sm mt-0.5">Kelola data menu, resep, dan informasi hidangan</p>
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={openAddForm}
+              className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg hover:shadow-amber-200 hover:-translate-y-0.5 transition-all"
+            >
+              <Plus className="w-5 h-5" />
+              Tambah Menu
             </button>
-            <div className="min-w-0">
-              <h1 className="text-lg sm:text-xl font-bold text-gray-800 flex items-center gap-2 truncate">
-                <ChefHat className="w-5 h-5 text-amber-600" /> Kelola Menu
-              </h1>
-              <p className="text-xs sm:text-sm text-gray-500">{dishes.length} menu tersimpan</p>
+          </div>
+        </div>
+
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Cari nama atau kategori menu..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-12 pr-4 py-3.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent shadow-sm"
+          />
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-amber-50 rounded-lg">
+                <UtensilsCrossed className="w-5 h-5 text-amber-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-800">{filteredDishes.length}</p>
+                <p className="text-sm text-gray-500">Total Menu</p>
+              </div>
             </div>
           </div>
-          <button onClick={openAddForm}
-            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-xl hover:shadow-lg hover:shadow-orange-200 transition font-semibold shrink-0">
-            <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Tambah Menu</span><span className="sm:hidden">Tambah</span>
-          </button>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Search + filter */}
-        <div className="mb-4">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Cari nama menu..."
-              className="w-full pl-12 pr-4 py-3 rounded-xl border border-amber-100 bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition" />
+          <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-yellow-50 rounded-lg">
+                <Star className="w-5 h-5 text-yellow-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-800">
+                  {filteredDishes.filter(d => d.is_popular === 1).length}
+                </p>
+                <p className="text-sm text-gray-500">Menu Populer</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-blue-50 rounded-lg">
+                <Building2 className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-800">
+                  {new Set(filteredDishes.map(d => d.category)).size}
+                </p>
+                <p className="text-sm text-gray-500">Kategori Unik</p>
+              </div>
+            </div>
           </div>
         </div>
-        <div className="flex gap-2 overflow-x-auto pb-2 mb-6">
-          {['Semua', ...CATEGORIES.map(c => c.value)].map(cat => (
-            <button key={cat} onClick={() => setCategoryFilter(cat)}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition border ${
-                categoryFilter === cat ? 'bg-amber-500 text-white border-amber-500 shadow' : 'bg-white text-gray-600 border-gray-200 hover:border-amber-300'}`}>
-              {cat === 'Semua' ? '🍽️ Semua' : `${getCategory(cat)?.emoji} ${cat}`}
-            </button>
+
+        {/* Menu List */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          {filteredDishes.map((dish) => (
+            <div key={dish.id} className="group bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-xl hover:shadow-gray-200/50 transition-all duration-300 hover:-translate-y-1">
+              {/* Card Header */}
+              <div className="h-32 bg-gradient-to-br from-amber-500 via-orange-500 to-amber-600 relative overflow-hidden">
+                {dish.image ? (
+                  <img src={dish.image} alt={dish.name} className="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-80" />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center opacity-30">
+                    <ChefHat className="w-16 h-16 text-white" />
+                  </div>
+                )}
+                <div className="absolute bottom-4 left-4 right-4">
+                  <h3 className="text-white font-bold text-lg leading-tight drop-shadow-lg">{dish.name}</h3>
+                </div>
+                <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={() => openEditForm(dish)}
+                    className="p-2 bg-white/90 backdrop-blur hover:bg-white rounded-lg transition-colors shadow-lg"
+                  >
+                    <Edit2 className="w-4 h-4 text-gray-700" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(dish.id, dish.name)}
+                    className="p-2 bg-white/90 backdrop-blur hover:bg-red-50 rounded-lg transition-colors shadow-lg"
+                  >
+                    <Trash2 className="w-4 h-4 text-red-600" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Card Content */}
+              <div className="p-5 space-y-3">
+                <p className="text-sm text-gray-600 line-clamp-2 min-h-[2.5rem]">{dish.description || 'Tidak ada deskripsi'}</p>
+
+                <div className="flex flex-wrap gap-2 pt-2">
+                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium border ${getCategory(dish.category)?.color || 'bg-gray-50 text-gray-600 border-gray-200'}`}>
+                    {getCategory(dish.category)?.emoji} {dish.category}
+                  </span>
+                  
+                  {dish.is_popular === 1 && (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-yellow-50 text-yellow-700 rounded-lg text-sm font-medium border border-yellow-200">
+                      <Star className="w-3.5 h-3.5 fill-yellow-500" /> Populer
+                    </span>
+                  )}
+
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-green-50 text-green-700 rounded-lg text-sm font-medium border border-green-200">
+                    Rp {(dish.price || 0).toLocaleString('id-ID')}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2 text-sm text-gray-500 pt-1">
+                  <UtensilsCrossed className="w-4 h-4 text-gray-400 shrink-0" />
+                  <span>{toList(dish.cooking_steps).length} langkah memasak</span>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-2 pt-3 mt-3 border-t border-gray-100">
+                  <button 
+                    onClick={() => openEditForm(dish)}
+                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-100 transition-colors text-sm font-semibold"
+                  >
+                    <Edit2 className="w-4 h-4" /> Edit Menu
+                  </button>
+                  <button
+                    onClick={() => handleDelete(dish.id, dish.name)}
+                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors text-sm font-semibold"
+                  >
+                    <Trash2 className="w-4 h-4" /> Hapus
+                  </button>
+                </div>
+              </div>
+            </div>
           ))}
         </div>
 
-        {/* Daftar menu */}
-        {filteredDishes.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-2xl border border-amber-100">
-            <ChefHat className="w-14 h-14 mx-auto mb-3 text-amber-200" />
-            <p className="font-medium text-gray-600">Tidak ada menu yang cocok</p>
-            <button onClick={openAddForm} className="mt-4 px-5 py-2.5 bg-amber-500 text-white rounded-xl font-semibold hover:bg-amber-600 transition">
-              + Tambah menu pertama
+        {filteredDishes.length === 0 && (
+          <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
+            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <ChefHat className="w-10 h-10 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">Belum ada data menu</h3>
+            <p className="text-gray-500 mb-6">Klik tombol "Tambah Menu" untuk menambahkan hidangan pertama</p>
+            <button
+              onClick={openAddForm}
+              className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all"
+            >
+              <Plus className="w-5 h-5" />
+              Tambah Menu
             </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredDishes.map(dish => (
-              <div key={dish.id} className="bg-white rounded-2xl border border-amber-100 shadow-sm overflow-hidden flex flex-col">
-                <div className="relative h-40 bg-gradient-to-br from-amber-100 to-orange-100">
-                  {dish.image ? (
-                    <img src={dish.image} alt={dish.name} className="w-full h-full object-cover" onError={e => { e.currentTarget.style.display = 'none' }} />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center"><ImageIcon className="w-10 h-10 text-amber-300" /></div>
-                  )}
-                  {dish.is_popular === 1 && (
-                    <span className="absolute top-2 right-2 flex items-center gap-1 bg-amber-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow">
-                      <Star className="w-3 h-3 fill-white" /> POPULER
-                    </span>
-                  )}
-                </div>
-                <div className="p-4 flex-1 flex flex-col">
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-bold text-gray-800">{dish.name}</h3>
-                    <span className="text-sm font-bold text-amber-600 whitespace-nowrap">Rp {(dish.price || 0).toLocaleString('id-ID')}</span>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1 line-clamp-2 flex-1">{dish.description}</p>
-                  <div className="flex items-center gap-2 mt-3">
-                    <span className={`px-2 py-0.5 text-[10px] font-medium rounded-full border ${getCategory(dish.category)?.color ?? 'bg-gray-50 text-gray-600 border-gray-200'}`}>
-                      {getCategory(dish.category)?.emoji} {dish.category || '—'}
-                    </span>
-                    <span className="text-[10px] text-gray-400">{toList(dish.cooking_steps).length} langkah</span>
-                  </div>
-                  <div className="flex gap-2 mt-4">
-                    <button onClick={() => openEditForm(dish)}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm font-semibold hover:bg-blue-100 transition">
-                      <Edit2 className="w-4 h-4" /> Edit
-                    </button>
-                    <button onClick={() => handleDelete(dish.id, dish.name)}
-                      className="px-3 py-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition" title="Hapus">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
           </div>
         )}
       </div>
 
       {/* Toast */}
       {toast && (
-        <div className={`fixed top-20 right-4 z-[70] flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg border ${
+        <div className={`fixed top-6 right-6 z-[70] flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg border ${
           toast.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
           {toast.type === 'success' ? <Check className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
           <span className="text-sm font-medium">{toast.msg}</span>
         </div>
       )}
 
-      {/* ═══════════ MODAL WIZARD ═══════════ */}
-      {showForm && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
-          <form onSubmit={handleSubmit} className="bg-white w-full max-w-3xl h-[95vh] sm:h-auto sm:max-h-[92vh] rounded-t-3xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden">
-
-            {/* Stepper */}
-            <div className="px-5 sm:px-8 pt-5 pb-4 border-b border-gray-100 bg-gradient-to-r from-amber-50 to-orange-50">
-              <div className="flex items-center justify-between mb-5">
-                <h2 className="text-lg sm:text-xl font-bold text-gray-800">
-                  {editingDish ? `✏️ Edit: ${editingDish.name}` : '➕ Tambah Menu Baru'}
-                </h2>
-                <button type="button" onClick={closeModal} className="p-2 hover:bg-white rounded-lg transition"><X className="w-5 h-5" /></button>
+      {/* Modal Form */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-2xl w-full max-w-4xl my-8 shadow-2xl flex flex-col max-h-[90vh]">
+            
+            {/* Modal Header */}
+            <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between rounded-t-2xl z-10">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl">
+                  <ChefHat className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-800">
+                    {editingDish ? 'Edit Menu' : 'Tambah Menu Baru'}
+                  </h2>
+                  <p className="text-sm text-gray-500">Lengkapi informasi hidangan di bawah ini</p>
+                </div>
               </div>
-              <div className="flex items-center">
-                {STEPS.map((s, i) => (
-                  <Fragment key={s.label}>
-                    <button type="button" onClick={() => i < step && setStep(i)} className="flex flex-col items-center gap-1" title={s.label}>
-                      <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border-2 transition ${
-                        i < step ? 'bg-green-500 border-green-500 text-white'
-                        : i === step ? 'bg-amber-500 border-amber-500 text-white shadow-md scale-105'
-                        : 'bg-white border-gray-200 text-gray-400'}`}>
-                        {i < step ? <Check className="w-4 h-4" /> : <s.icon className="w-4 h-4" />}
-                      </div>
-                      <span className={`text-[10px] font-semibold hidden sm:block ${i === step ? 'text-amber-700' : 'text-gray-500'}`}>{s.label}</span>
-                    </button>
-                    {i < STEPS.length - 1 && (
-                      <div className={`flex-1 h-1 mx-1.5 sm:mx-3 rounded-full mb-4 sm:mb-5 ${i < step ? 'bg-green-400' : 'bg-gray-200'}`} />
-                    )}
-                  </Fragment>
-                ))}
-              </div>
-              <p className="sm:hidden text-xs font-semibold text-amber-700 mt-1">
-                Langkah {step + 1} dari {STEPS.length}: {STEPS[step].label}
-              </p>
+              <button
+                onClick={() => { setShowModal(false); resetForm(); }}
+                className="p-2.5 hover:bg-gray-100 rounded-xl transition-colors"
+              >
+                <X className="w-6 h-6 text-gray-500" />
+              </button>
             </div>
 
-            {/* Body */}
-            <div className="flex-1 overflow-y-auto p-5 sm:p-8 space-y-5">
+            {/* Tabs */}
+            <div className="border-b border-gray-200 px-6 bg-gray-50/50">
+              <div className="flex gap-1">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('basic')}
+                  className={`flex items-center gap-2 px-4 py-3 font-medium text-sm border-b-2 transition-colors ${
+                    activeTab === 'basic'
+                      ? 'border-amber-500 text-amber-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  <Info className="w-4 h-4" />
+                  Informasi Dasar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('image')}
+                  className={`flex items-center gap-2 px-4 py-3 font-medium text-sm border-b-2 transition-colors ${
+                    activeTab === 'image'
+                      ? 'border-amber-500 text-amber-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  <ImageIcon className="w-4 h-4" />
+                  Gambar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('recipe')}
+                  className={`flex items-center gap-2 px-4 py-3 font-medium text-sm border-b-2 transition-colors ${
+                    activeTab === 'recipe'
+                      ? 'border-amber-500 text-amber-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  <UtensilsCrossed className="w-4 h-4" />
+                  Resep & Cerita
+                </button>
+              </div>
+            </div>
 
-              {/* ── STEP 1: INFO ── */}
-              {step === 0 && (
-                <>
-                  <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-100 rounded-xl text-xs text-blue-700">
-                    <Info className="w-4 h-4 shrink-0 mt-0.5" />
-                    <span>Tenang, isi bertahap aja 😊 Hanya <b>nama</b> dan <b>deskripsi</b> yang wajib. Bahan, langkah & sejarah bisa dibantu AI ✨</span>
-                  </div>
-
-                  <div>
-                    <Label text="Nama Menu" required />
-                    <input type="text" value={formData.name} onChange={e => update({ name: e.target.value })}
-                      placeholder="cth: Soto Medan, Bika Ambon, Mie Gomak..."
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition" />
-                  </div>
-
-                  <div>
-                    <Label text="Deskripsi Singkat" required />
-                    <textarea value={formData.description} onChange={e => update({ description: e.target.value })} rows={2}
-                      placeholder="Jelaskan menu ini dalam 1-2 kalimat..."
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition resize-none" />
-                  </div>
-
-                  <div>
-                    <Label text="Kategori" required />
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      {CATEGORIES.map(c => (
-                        <button type="button" key={c.value} onClick={() => update({ category: c.value })}
-                          className={`rounded-xl border-2 p-3 text-center transition ${
-                            formData.category === c.value ? 'border-amber-500 bg-amber-50 shadow-sm' : 'border-gray-200 bg-white hover:border-amber-300'}`}>
-                          <div className="text-2xl">{c.emoji}</div>
-                          <div className={`text-xs font-semibold mt-1 ${formData.category === c.value ? 'text-amber-700' : 'text-gray-600'}`}>{c.value}</div>
-                        </button>
-                      ))}
+            <form onSubmit={handleSubmit} className="p-6 space-y-6 overflow-y-auto flex-1">
+              
+              {/* Tab: Informasi Dasar */}
+              {activeTab === 'basic' && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="md:col-span-2">
+                      <Label text="Nama Menu" required />
+                      <input
+                        type="text"
+                        value={formData.name}
+                        onChange={(e) => update({ name: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                        placeholder="Contoh: Soto Medan, Bika Ambon"
+                      />
                     </div>
-                  </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="md:col-span-2">
+                      <Label text="Deskripsi Singkat" required />
+                      <textarea
+                        value={formData.description}
+                        onChange={(e) => update({ description: e.target.value })}
+                        rows={3}
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none"
+                        placeholder="Jelaskan menu ini dalam 1-2 kalimat..."
+                      />
+                    </div>
+
                     <div>
-                      <Label text="Harga" optional />
+                      <Label text="Kategori" required />
+                      <select
+                        value={formData.category}
+                        onChange={(e) => update({ category: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-white"
+                      >
+                        {CATEGORIES.map(c => (
+                          <option key={c.value} value={c.value}>{c.emoji} {c.value}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <Label text="Harga (Rp)" optional />
                       <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-semibold text-sm">Rp</span>
-                        <input type="number" min="0" value={formData.price || ''} onChange={e => update({ price: Number(e.target.value) })}
-                          placeholder="37500"
-                          className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition" />
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-semibold text-sm">Rp</span>
+                        <input
+                          type="number"
+                          min="0"
+                          value={formData.price || ''}
+                          onChange={(e) => update({ price: Number(e.target.value) })}
+                          className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                          placeholder="35000"
+                        />
                       </div>
-                      {formData.price > 0 && <p className="text-xs text-amber-600 font-semibold mt-1">= Rp {formData.price.toLocaleString('id-ID')}</p>}
                     </div>
-                    <div>
-                      <Label text="Menu Populer?" optional />
-                      <button type="button" onClick={() => update({ is_popular: !formData.is_popular })}
+
+                    <div className="md:col-span-2">
+                      <Label text="Status" optional />
+                      <button 
+                        type="button" 
+                        onClick={() => update({ is_popular: !formData.is_popular })}
                         className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition ${
-                          formData.is_popular ? 'border-amber-500 bg-amber-50' : 'border-gray-200 bg-white'}`}>
+                          formData.is_popular ? 'border-amber-500 bg-amber-50' : 'border-gray-200 bg-white hover:border-amber-300'
+                        }`}
+                      >
                         <span className="text-sm font-medium text-gray-700 flex items-center gap-2">
                           <Star className={`w-4 h-4 ${formData.is_popular ? 'text-amber-500 fill-amber-500' : 'text-gray-300'}`} />
-                          {formData.is_popular ? 'Ya, populer' : 'Tidak'}
+                          {formData.is_popular ? 'Ya, tampilkan sebagai menu populer' : 'Tidak, menu reguler'}
                         </span>
                         <span className={`w-11 h-6 rounded-full relative transition ${formData.is_popular ? 'bg-amber-500' : 'bg-gray-300'}`}>
                           <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${formData.is_popular ? 'left-[22px]' : 'left-0.5'}`} />
@@ -528,31 +637,20 @@ export default function ManageMenu() {
                       </button>
                     </div>
                   </div>
-
-                  {stepError && (
-                    <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
-                      <AlertCircle className="w-4 h-4 shrink-0" /> {stepError}
-                    </div>
-                  )}
-                </>
+                </div>
               )}
 
-              {/* ── STEP 2: GAMBAR ── */}
-              {step === 1 && (
-                <>
-                  <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-100 rounded-xl text-xs text-blue-700">
-                    <Info className="w-4 h-4 shrink-0 mt-0.5" />
-                    <span>Gambar bikin menu menarik, tapi <b>boleh dilewati</b> 😉 Klik "Lanjut" untuk skip.</span>
-                  </div>
-
-                  <div className="flex rounded-xl border border-gray-200 p-1 bg-gray-50">
+              {/* Tab: Gambar */}
+              {activeTab === 'image' && (
+                <div className="space-y-4">
+                  <div className="flex rounded-xl border border-gray-200 p-1 bg-gray-50 w-fit">
                     <button type="button" onClick={() => setImageMode('upload')}
-                      className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition ${imageMode === 'upload' ? 'bg-white text-amber-600 shadow-sm' : 'text-gray-500'}`}>
-                      <Upload className="w-4 h-4" /> Upload dari HP/Laptop
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition ${imageMode === 'upload' ? 'bg-white text-amber-600 shadow-sm' : 'text-gray-500'}`}>
+                      <Upload className="w-4 h-4" /> Upload File
                     </button>
                     <button type="button" onClick={() => setImageMode('url')}
-                      className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition ${imageMode === 'url' ? 'bg-white text-amber-600 shadow-sm' : 'text-gray-500'}`}>
-                      <LinkIcon className="w-4 h-4" /> Pakai link gambar
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition ${imageMode === 'url' ? 'bg-white text-amber-600 shadow-sm' : 'text-gray-500'}`}>
+                      <LinkIcon className="w-4 h-4" /> Pakai Link URL
                     </button>
                   </div>
 
@@ -563,19 +661,23 @@ export default function ManageMenu() {
                       onDragLeave={() => setDragging(false)}
                       onDrop={e => { e.preventDefault(); setDragging(false); const f = e.dataTransfer.files?.[0]; if (f) processFile(f) }}
                       className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition ${
-                        dragging ? 'border-amber-500 bg-amber-50' : 'border-amber-200 bg-amber-50/50 hover:border-amber-400'}`}>
+                        dragging ? 'border-amber-500 bg-amber-50' : 'border-gray-300 bg-gray-50 hover:border-amber-400'}`}>
                       <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
                         onChange={e => { const f = e.target.files?.[0]; if (f) processFile(f) }} />
-                      <Upload className="w-10 h-10 mx-auto text-amber-500 mb-2" />
+                      <Upload className="w-10 h-10 mx-auto text-gray-400 mb-2" />
                       <p className="text-sm font-semibold text-gray-700">Klik atau seret gambar ke sini</p>
-                      <p className="text-xs text-gray-400 mt-1">JPG/PNG, maksimal 2MB — otomatis dikompres 👍</p>
+                      <p className="text-xs text-gray-500 mt-1">JPG/PNG, maksimal 2MB — otomatis dikompres</p>
                     </div>
                   ) : (
                     <div>
-                      <input type="url" value={formData.image.startsWith('data:') ? '' : formData.image}
+                      <Label text="URL Gambar" optional />
+                      <input 
+                        type="url" 
+                        value={formData.image.startsWith('data:') ? '' : formData.image}
                         onChange={e => update({ image: e.target.value })}
-                        placeholder="https://contoh.com/foto-soto.jpg"
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition" />
+                        placeholder="https://contoh.com/foto-makanan.jpg"
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent" 
+                      />
                       <Tip>Tempel link gambar dari internet.</Tip>
                     </div>
                   )}
@@ -587,9 +689,8 @@ export default function ManageMenu() {
                   )}
 
                   {formData.image && (
-                    <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-xl">
-                      <img src={formData.image} alt="Preview" className="w-20 h-20 rounded-xl object-cover border border-gray-200"
-                        onError={e => { e.currentTarget.style.display = 'none' }} />
+                    <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-xl border border-gray-200">
+                      <img src={formData.image} alt="Preview" className="w-20 h-20 rounded-xl object-cover" onError={e => { e.currentTarget.style.display = 'none' }} />
                       <div className="flex-1">
                         <p className="text-sm font-semibold text-green-600 flex items-center gap-1"><Check className="w-4 h-4" /> Gambar siap dipakai!</p>
                         <p className="text-xs text-gray-500 mt-0.5">Beginilah tampilannya di kartu menu.</p>
@@ -600,28 +701,25 @@ export default function ManageMenu() {
                       </button>
                     </div>
                   )}
-                </>
+                </div>
               )}
 
-              {/* ── STEP 3: BAHAN & LANGKAH (MUDAH) ── */}
-              {step === 2 && (
-                <>
-                  {/* Tombol AI */}
+              {/* Tab: Resep & Cerita */}
+              {activeTab === 'recipe' && (
+                <div className="space-y-6">
+                  {/* AI Button */}
                   <button type="button" onClick={handleAiGenerate} disabled={aiLoading}
-                    className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold hover:shadow-lg transition flex items-center justify-center gap-2 disabled:opacity-60">
+                    className="w-full py-3.5 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold hover:shadow-lg transition flex items-center justify-center gap-2 disabled:opacity-60">
                     {aiLoading ? (
                       <><div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" /> AI sedang memasak resep...</>
                     ) : (
-                      <><Sparkles className="w-5 h-5" /> Isi Otomatis dengan AI (bahan + langkah + sejarah)</>
+                      <><Sparkles className="w-5 h-5" /> Isi Otomatis dengan AI (Bahan + Langkah + Sejarah)</>
                     )}
                   </button>
-                  <Tip>AI membuatkan bahan, langkah memasak, bumbu, dan sejarah berdasarkan nama menu. Hasilnya tetap bisa kamu edit!</Tip>
 
-                  {/* BAHAN */}
+                  {/* Bahan */}
                   <div>
                     <Label text="Bahan-bahan" optional />
-                    <p className="text-xs text-gray-400 mb-2">Tap bahan cepat di bawah, atau ketik sendiri lalu tekan <b>Enter</b> / tombol <b>＋</b>:</p>
-
                     <div className="flex flex-wrap gap-1.5 mb-3">
                       {COMMON_INGREDIENTS.map(c => (
                         <button type="button" key={c} onClick={() => addIngredient(c)}
@@ -630,46 +728,36 @@ export default function ManageMenu() {
                         </button>
                       ))}
                     </div>
-
                     <div className="flex gap-2">
                       <input
                         value={ingInput}
                         onChange={e => setIngInput(e.target.value)}
                         onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addIngredient(ingInput) } }}
-                        onPaste={e => {
-                          const text = e.clipboardData.getData('text')
-                          if (text.includes('\n')) { e.preventDefault(); addIngredient(text) }
-                        }}
                         placeholder="Ketik bahan, cth: 500g daging ayam"
-                        className="flex-1 px-4 py-3 rounded-xl border border-gray-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition" />
+                        className="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent" />
                       <button type="button" onClick={() => addIngredient(ingInput)}
-                        className="px-4 rounded-xl bg-amber-500 text-white hover:bg-amber-600 transition" title="Tambah bahan">
+                        className="px-4 rounded-xl bg-amber-500 text-white hover:bg-amber-600 transition">
                         <Plus className="w-5 h-5" />
                       </button>
                     </div>
-
                     {ingredientList.length > 0 && (
                       <ul className="mt-3 space-y-1.5">
                         {ingredientList.map((ing, i) => (
                           <li key={`${ing}-${i}`} className="flex items-center gap-2.5 bg-amber-50/60 border border-amber-100 rounded-xl px-3 py-2">
                             <span className="text-lg">{ingEmoji(ing)}</span>
                             <span className="flex-1 text-sm text-gray-700">{ing}</span>
-                            <button type="button" onClick={() => removeIngredient(i)}
-                              className="p-1.5 hover:bg-red-50 text-red-400 rounded-lg transition" title="Hapus">
+                            <button type="button" onClick={() => removeIngredient(i)} className="p-1.5 hover:bg-red-50 text-red-400 rounded-lg transition">
                               <X className="w-4 h-4" />
                             </button>
                           </li>
                         ))}
                       </ul>
                     )}
-                    <p className="text-xs text-amber-600 font-semibold mt-2">🥬 {ingredientList.length} bahan terdaftar</p>
                   </div>
 
-                  {/* LANGKAH */}
+                  {/* Langkah */}
                   <div>
                     <Label text="Langkah Memasak" optional />
-                    <p className="text-xs text-gray-400 mb-2">Tulis seperti bercerita — nomor urut otomatis. Sebutkan nama bahan di dalam langkah agar game bisa mendeteksinya.</p>
-
                     <div className="space-y-2.5">
                       {stepList.map((s, i) => (
                         <div key={i} className="flex items-start gap-2">
@@ -678,116 +766,71 @@ export default function ManageMenu() {
                             value={s}
                             onChange={e => updateStep(i, e.target.value)}
                             rows={2}
-                            placeholder={`Langkah ${i + 1}, cth: Rebus daging ayam dalam 1 liter air hingga matang`}
-                            className="flex-1 px-3 py-2 rounded-xl border border-gray-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition text-sm resize-none" />
+                            placeholder={`Langkah ${i + 1}...`}
+                            className="flex-1 px-3 py-2 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm resize-none" />
                           <div className="flex flex-col gap-0.5 shrink-0">
-                            <button type="button" onClick={() => moveStep(i, -1)} disabled={i === 0}
-                              className="p-1 text-gray-400 hover:text-amber-600 disabled:opacity-30" title="Naik"><ChevronUp className="w-4 h-4" /></button>
-                            <button type="button" onClick={() => moveStep(i, 1)} disabled={i === stepList.length - 1}
-                              className="p-1 text-gray-400 hover:text-amber-600 disabled:opacity-30" title="Turun"><ChevronDown className="w-4 h-4" /></button>
-                            <button type="button" onClick={() => removeStep(i)}
-                              className="p-1 text-red-400 hover:text-red-600" title="Hapus"><X className="w-4 h-4" /></button>
+                            <button type="button" onClick={() => moveStep(i, -1)} disabled={i === 0} className="p-1 text-gray-400 hover:text-amber-600 disabled:opacity-30"><ChevronUp className="w-4 h-4" /></button>
+                            <button type="button" onClick={() => moveStep(i, 1)} disabled={i === stepList.length - 1} className="p-1 text-gray-400 hover:text-amber-600 disabled:opacity-30"><ChevronDown className="w-4 h-4" /></button>
+                            <button type="button" onClick={() => removeStep(i)} className="p-1 text-red-400 hover:text-red-600"><X className="w-4 h-4" /></button>
                           </div>
                         </div>
                       ))}
                     </div>
-
                     <button type="button" onClick={addStep}
                       className="mt-3 w-full py-2.5 border-2 border-dashed border-amber-300 rounded-xl text-amber-600 font-semibold hover:bg-amber-50 transition flex items-center justify-center gap-2">
-                      <Plus className="w-4 h-4" /> Tambah Langkah {stepList.length + 1}
+                      <Plus className="w-4 h-4" /> Tambah Langkah
                     </button>
                   </div>
 
-                  {/* BUMBU */}
-                  <div>
-                    <Label text="Bumbu & Rempah" optional />
-                    <textarea value={formData.spices} onChange={e => update({ spices: e.target.value })} rows={2}
-                      placeholder={'Satu per baris, cth:\nKetumbar\nJintan'}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition text-sm" />
-                  </div>
-                </>
-              )}
-
-              {/* ── STEP 4: SEJARAH & CERITA ── */}
-              {step === 3 && (
-                <>
-                  <div className="flex items-start gap-2 p-3 bg-purple-50 border border-purple-100 rounded-xl text-xs text-purple-700">
-                    <BookOpen className="w-4 h-4 shrink-0 mt-0.5" />
-                    <span>Ceritakan kisah makanan ini — tampil di halaman detail & <b>Dapur Akulturasi</b>. Kalau bingung, pakai tombol AI di langkah 3 ✨</span>
-                  </div>
-
-                  <div>
-                    <Label text="Sejarah / Cerita Menu" optional />
-                    <textarea value={formData.history} onChange={e => update({ history: e.target.value })} rows={4}
-                      placeholder={'Contoh:\nSoto Medan lahir dari akulturasi budaya Melayu, Tionghoa, dan India di pelabuhan Medan pada awal abad ke-20...'}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition resize-none" />
-                    <Tip>2-3 kalimat saja cukup: dari mana asalnya, pengaruh budaya apa, dan kenapa jadi ikon Medan.</Tip>
-                  </div>
-
-                  <div>
-                    <Label text="Perjalanan / Jejak Akulturasi" optional />
-                    <textarea value={formData.journey} onChange={e => update({ journey: e.target.value })} rows={3}
-                      placeholder="Bagaimana resep ini berpindah & berbaur antar budaya..."
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition resize-none" />
-                  </div>
-
-                  <div>
-                    <Label text="Nilai Gizi" optional />
-                    <textarea value={formData.nutrition} onChange={e => update({ nutrition: e.target.value })} rows={2}
-                      placeholder={'Kalori: 350 kkal\nProtein: 20g'}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition resize-none" />
-                  </div>
-
-                  {/* Ringkasan */}
-                  <div className="rounded-2xl border-2 border-amber-200 bg-amber-50/50 p-4">
-                    <p className="text-sm font-bold text-amber-800 mb-3 flex items-center gap-2"><Leaf className="w-4 h-4" /> Cek dulu sebelum disimpan:</p>
-                    <div className="flex gap-3 bg-white rounded-xl p-3 border border-amber-100">
-                      {formData.image ? (
-                        <img src={formData.image} alt="" className="w-16 h-16 rounded-lg object-cover" onError={e => { e.currentTarget.style.display = 'none' }} />
-                      ) : (
-                        <div className="w-16 h-16 rounded-lg bg-amber-100 flex items-center justify-center"><ImageIcon className="w-6 h-6 text-amber-400" /></div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-gray-800 truncate">{formData.name || '(belum ada nama)'}</p>
-                        <p className="text-xs text-gray-500 line-clamp-1">{formData.description}</p>
-                        <p className="text-xs mt-1 text-amber-600 font-semibold">
-                          {getCategory(formData.category)?.emoji} {formData.category} • Rp {(formData.price || 0).toLocaleString('id-ID')}
-                          {formData.is_popular && ' • ⭐ Populer'}
-                        </p>
-                      </div>
+                  {/* Sejarah & Nutrisi */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="md:col-span-2">
+                      <Label text="Sejarah / Cerita Menu" optional />
+                      <textarea 
+                        value={formData.history} 
+                        onChange={e => update({ history: e.target.value })} 
+                        rows={3}
+                        placeholder="Ceritakan kisah makanan ini..."
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none" 
+                      />
                     </div>
-                    <p className="text-xs text-gray-500 mt-2">
-                      🥬 {ingredientList.length} bahan • 🔥 {stepList.filter(s => s.trim()).length} langkah • 📖 Sejarah: {formData.history.trim() ? 'ada ✅' : 'belum ❌'}
-                    </p>
+                    <div className="md:col-span-2">
+                      <Label text="Nilai Gizi" optional />
+                      <textarea 
+                        value={formData.nutrition} 
+                        onChange={e => update({ nutrition: e.target.value })} 
+                        rows={2}
+                        placeholder="Kalori: 350 kkal, Protein: 20g..."
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none" 
+                      />
+                    </div>
                   </div>
-                </>
+                </div>
               )}
-            </div>
 
-            {/* Footer */}
-            <div className="px-5 sm:px-8 py-4 border-t border-gray-100 bg-white flex items-center justify-between gap-3">
-              <button type="button" onClick={() => setStep(s => Math.max(0, s - 1))} disabled={step === 0}
-                className="flex items-center gap-1 px-4 py-3 rounded-xl text-gray-600 font-semibold hover:bg-gray-100 transition disabled:opacity-40 disabled:cursor-not-allowed">
-                <ChevronLeft className="w-4 h-4" /> Kembali
-              </button>
-
-              {step < STEPS.length - 1 ? (
-                <button type="button" onClick={handleNext}
-                  className="flex items-center gap-1 px-6 py-3 rounded-xl bg-amber-500 text-white font-bold hover:bg-amber-600 transition shadow">
-                  Lanjut <ChevronRight className="w-4 h-4" />
+              {/* Footer Buttons */}
+              <div className="flex gap-3 pt-4 border-t border-gray-200 sticky bottom-0 bg-white">
+                <button
+                  type="button"
+                  onClick={() => { setShowModal(false); resetForm(); }}
+                  className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 font-semibold transition-colors"
+                >
+                  Batal
                 </button>
-              ) : (
-                <button type="submit" disabled={saving}
-                  className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold hover:shadow-lg transition disabled:opacity-50">
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-orange-600 text-white px-4 py-3 rounded-xl font-semibold hover:shadow-lg hover:shadow-amber-200 transition-all disabled:opacity-50"
+                >
                   {saving ? (
                     <><div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" /> Menyimpan...</>
                   ) : (
-                    <><Save className="w-5 h-5" /> Simpan Menu</>
+                    <><Save className="w-5 h-5" /> Simpan Data</>
                   )}
                 </button>
-              )}
-            </div>
-          </form>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>
