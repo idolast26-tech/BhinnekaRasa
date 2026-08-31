@@ -423,7 +423,7 @@ export default function ManageMenu() {
                   </button>
                   <button onClick={() => handleDelete(dish.id, dish.name)} className="p-2 bg-white/95 backdrop-blur hover:bg-red-50 rounded-xl transition-colors shadow-lg text-gray-700 hover:text-red-600">
                     <Trash2 className="w-4 h-4" />
-                  </button
+                  </button>
                 </div>
 
                 <div className="absolute bottom-4 left-4 right-4">
@@ -535,7 +535,7 @@ export default function ManageMenu() {
                     {tab === 'recipe' && 'Resep & Cerita'}
                   </button>
                 ))}
-              </div
+              </div>
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-6 overflow-y-auto flex-1 custom-scrollbar">
@@ -828,7 +828,7 @@ export default function ManageMenu() {
                         placeholder="Kalori: 350 kkal&#10;Protein: 20g"
                         className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all resize-none" 
                       />
-                    </div
+                    </div>
                   </div>
                 </div>
               )}
