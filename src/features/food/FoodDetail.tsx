@@ -7,7 +7,6 @@ import { fetchReviewsByFoodId, submitReview } from "../../services/reviewApi";
 import LoginModal from "../../components/LoginModal";
 import {
   ChevronDown,
-  ChevronUp,
   Star,
   MapPin,
   Clock,
@@ -26,29 +25,87 @@ interface MapModalProps {
   onClose: () => void;
 }
 
+// ─── Helper: Format teks dengan italic otomatis untuk bahasa asing ───────────
+// Mendeteksi:
+// 1. Markdown italic: *teks* atau _teks_
+// 2. Skrip non-Latin: Arab, CJK (Mandarin/Jepang/Korea), Hangul, Devanagari, Thai
+const FOREIGN_SCRIPT_REGEX =
+  /[\p{Script=Arabic}\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Devanagari}\p{Script=Thai}\p{Script=Bengali}\p{Script=Tamil}\p{Script=Telugu}\p{Script=Gujarati}\p{Script=Gurmukhi}\p{Script=Myanmar}\p{Script=Khmer}\p{Script=Lao}\p{Script=Tibetan}]+/u;
+
+const MARKDOWN_ITALIC_REGEX = /(\*[^*\n]+\*|_[^_\n]+_)/g;
+
+function FormattedText({
+  text,
+  className = "",
+}: {
+  text: string;
+  className?: string;
+}) {
+  if (!text) return null;
+
+  // Split berdasarkan markdown italic markers
+  const parts = text.split(MARKDOWN_ITALIC_REGEX);
+
+  return (
+    <>
+      {parts.map((part, i) => {
+        // Cek apakah ini markdown italic
+        const isMarkdownItalic =
+          (part.startsWith("*") && part.endsWith("*")) ||
+          (part.startsWith("_") && part.endsWith("_") && part.length > 1);
+
+        if (isMarkdownItalic) {
+          const inner = part.slice(1, -1);
+          return (
+            <em
+              key={i}
+              className={`italic text-orange-700 font-medium not-italic ${className}`}
+            >
+              {inner}
+            </em>
+          );
+        }
+
+        // Cek apakah mengandung skrip asing
+        if (FOREIGN_SCRIPT_REGEX.test(part)) {
+          return (
+            <em
+              key={i}
+              className={`italic text-orange-700 font-medium ${className}`}
+            >
+              {part}
+            </em>
+          );
+        }
+
+        return <span key={i}>{part}</span>;
+      })}
+    </>
+  );
+}
+
 function MapModal({ place, onClose }: MapModalProps) {
-  // Buat embed URL dari nama + alamat
   const query = encodeURIComponent(`${place.name}, ${place.address}`);
   const embedUrl = `https://maps.google.com/maps?q=${query}&output=embed&hl=id`;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       <div
         className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col"
         style={{ maxHeight: "90vh" }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-orange-500 to-amber-500 text-white flex-shrink-0">
           <div className="flex items-center gap-2 min-w-0">
             <MapPin className="w-5 h-5 flex-shrink-0" />
             <div className="min-w-0">
-              <p className="font-bold text-sm truncate">{place.name}</p>
-              <p className="text-xs text-white/80 truncate">{place.address}</p>
+              <p className="font-bold text-sm truncate">
+                <FormattedText text={place.name} />
+              </p>
+              <p className="text-xs text-white/80 truncate">
+                <FormattedText text={place.address} />
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0 ml-3">
@@ -69,7 +126,6 @@ function MapModal({ place, onClose }: MapModalProps) {
           </div>
         </div>
 
-        {/* Map iframe */}
         <div className="flex-1 relative" style={{ minHeight: "400px" }}>
           <iframe
             src={embedUrl}
@@ -83,11 +139,8 @@ function MapModal({ place, onClose }: MapModalProps) {
           />
         </div>
 
-        {/* Footer */}
         <div className="px-5 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between flex-shrink-0">
-          <p className="text-xs text-gray-500">
-            📍 Klik pin di peta untuk petunjuk arah
-          </p>
+          <p className="text-xs text-gray-500">📍 Klik pin di peta untuk petunjuk arah</p>
           <button
             onClick={onClose}
             className="flex items-center gap-1.5 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-sm font-semibold transition-all"
@@ -109,18 +162,14 @@ export default function FoodDetail() {
   const [food, setFood] = useState<Food | null>(null);
   const [loading, setLoading] = useState(true);
   const [showLogin, setShowLogin] = useState(false);
-  const [loginIntent, setLoginIntent] = useState<"favorite" | "review" | null>(
-    null,
-  );
+  const [loginIntent, setLoginIntent] = useState<"favorite" | "review" | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(true);
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [newRating, setNewRating] = useState(5);
   const [newComment, setNewComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [expandedSections, setExpandedSections] = useState<
-    Record<string, boolean>
-  >({
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     deskripsi: true,
   });
   const [mapModal, setMapModal] = useState<{
@@ -156,11 +205,9 @@ export default function FoodDetail() {
   }, [id]);
 
   const isFavorite = food ? favorites.includes(food.id) : false;
-  const hasReviews = reviews.length > 0; 
+  const hasReviews = reviews.length > 0;
   const avgRating = hasReviews
-    ? (
-        reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length
-      ).toFixed(1)
+    ? (reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length).toFixed(1)
     : null;
 
   function handleFavoriteClick() {
@@ -176,9 +223,7 @@ export default function FoodDetail() {
     if (isAuthenticated && user) {
       setShowReviewForm(true);
       setTimeout(() => {
-        document
-          .getElementById("ulasan-section")
-          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+        document.getElementById("ulasan-section")?.scrollIntoView({ behavior: "smooth", block: "center" });
       }, 100);
     } else {
       setLoginIntent("review");
@@ -193,10 +238,8 @@ export default function FoodDetail() {
       setShowReviewForm(true);
       setTimeout(
         () =>
-          document
-            .getElementById("ulasan-section")
-            ?.scrollIntoView({ behavior: "smooth", block: "center" }),
-        100,
+          document.getElementById("ulasan-section")?.scrollIntoView({ behavior: "smooth", block: "center" }),
+        100
       );
     }
     setLoginIntent(null);
@@ -242,9 +285,7 @@ export default function FoodDetail() {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 to-amber-50">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-orange-200 border-t-orange-500 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-orange-800 font-medium">
-            Memuat detail kuliner...
-          </p>
+          <p className="text-orange-800 font-medium">Memuat detail kuliner...</p>
         </div>
       </div>
     );
@@ -307,16 +348,14 @@ export default function FoodDetail() {
                 {food.category}
               </span>
               <h1 className="text-4xl md:text-5xl font-bold mb-3 leading-tight">
-                {food.name}
+                <FormattedText text={food.name} className="text-white" />
               </h1>
               <div className="flex items-center gap-4 text-sm">
                 {hasReviews && (
                   <div className="flex items-center gap-2 bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-lg">
                     <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
                     <span className="font-bold">{avgRating}</span>
-                    <span className="text-white/70">
-                      ({reviews.length} ulasan)
-                    </span>
+                    <span className="text-white/70">({reviews.length} ulasan)</span>
                   </div>
                 )}
               </div>
@@ -330,23 +369,17 @@ export default function FoodDetail() {
             <div className="bg-white rounded-2xl p-4 shadow-sm border border-orange-100 text-center">
               <div className="text-2xl mb-1">🍽️</div>
               <p className="text-xs text-gray-500 font-medium">Kategori</p>
-              <p className="text-sm font-bold text-gray-800 truncate">
-                {food.category}
-              </p>
+              <p className="text-sm font-bold text-gray-800 truncate">{food.category}</p>
             </div>
             <div className="bg-white rounded-2xl p-4 shadow-sm border border-orange-100 text-center">
               <div className="text-2xl mb-1">⭐</div>
               <p className="text-xs text-gray-500 font-medium">Rating</p>
-              <p className="text-sm font-bold text-gray-800">
-                {avgRating || "N/A"}
-              </p>
+              <p className="text-sm font-bold text-gray-800">{avgRating || "N/A"}</p>
             </div>
             <div className="bg-white rounded-2xl p-4 shadow-sm border border-orange-100 text-center">
               <div className="text-2xl mb-1">💰</div>
               <p className="text-xs text-gray-500 font-medium">Harga</p>
-              <p className="text-sm font-bold text-gray-800">
-                Rp {(food.price / 1000).toFixed(0)}k
-              </p>
+              <p className="text-sm font-bold text-gray-800">Rp {(food.price / 1000).toFixed(0)}k</p>
             </div>
           </div>
 
@@ -360,7 +393,7 @@ export default function FoodDetail() {
               defaultOpen
             >
               <p className="text-gray-600 leading-relaxed">
-                {food.description}
+                <FormattedText text={food.description} />
               </p>
             </AccordionSection>
 
@@ -372,7 +405,7 @@ export default function FoodDetail() {
                 onToggle={() => toggleSection("sejarah")}
               >
                 <p className="text-gray-600 leading-relaxed whitespace-pre-line text-sm">
-                  {food.history}
+                  <FormattedText text={food.history} />
                 </p>
               </AccordionSection>
             )}
@@ -385,14 +418,14 @@ export default function FoodDetail() {
                 onToggle={() => toggleSection("journey")}
               >
                 <p className="text-gray-600 leading-relaxed whitespace-pre-line text-sm">
-                  {food.journey}
+                  <FormattedText text={food.journey} />
                 </p>
               </AccordionSection>
             )}
 
             <AccordionSection
               title="Bahan-bahan Utama"
-              icon="🌿"
+              icon=""
               isOpen={expandedSections.ingredients}
               onToggle={() => toggleSection("ingredients")}
             >
@@ -402,7 +435,7 @@ export default function FoodDetail() {
                     key={i}
                     className="px-3 py-2 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 text-orange-800 rounded-xl text-sm font-medium shadow-sm"
                   >
-                    {item}
+                    <FormattedText text={item} />
                   </span>
                 ))}
               </div>
@@ -421,7 +454,7 @@ export default function FoodDetail() {
                       key={i}
                       className="px-3 py-2 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 text-amber-800 rounded-xl text-sm font-medium shadow-sm"
                     >
-                      {spice}
+                      <FormattedText text={spice} />
                     </span>
                   ))}
                 </div>
@@ -436,26 +469,10 @@ export default function FoodDetail() {
                 onToggle={() => toggleSection("nutrition")}
               >
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <NutriBadge
-                    label="Kalori"
-                    value={food.nutrition.calories}
-                    color="from-red-500 to-red-600"
-                  />
-                  <NutriBadge
-                    label="Lemak"
-                    value={food.nutrition.fat}
-                    color="from-yellow-500 to-orange-500"
-                  />
-                  <NutriBadge
-                    label="Karbohidrat"
-                    value={food.nutrition.carbs}
-                    color="from-blue-500 to-blue-600"
-                  />
-                  <NutriBadge
-                    label="Protein"
-                    value={food.nutrition.protein}
-                    color="from-green-500 to-emerald-600"
-                  />
+                  <NutriBadge label="Kalori" value={food.nutrition.calories} color="from-red-500 to-red-600" />
+                  <NutriBadge label="Lemak" value={food.nutrition.fat} color="from-yellow-500 to-orange-500" />
+                  <NutriBadge label="Karbohidrat" value={food.nutrition.carbs} color="from-blue-500 to-blue-600" />
+                  <NutriBadge label="Protein" value={food.nutrition.protein} color="from-green-500 to-emerald-600" />
                 </div>
               </AccordionSection>
             )}
@@ -463,7 +480,7 @@ export default function FoodDetail() {
             {food.recommendedPlaces && food.recommendedPlaces.length > 0 && (
               <AccordionSection
                 title="Rekomendasi Tempat"
-                icon="📍"
+                icon=""
                 isOpen={expandedSections.places}
                 onToggle={() => toggleSection("places")}
               >
@@ -475,17 +492,18 @@ export default function FoodDetail() {
                     >
                       <div className="flex justify-between items-start mb-3">
                         <h4 className="font-bold text-gray-800 flex-1 pr-3">
-                          {place.name}
+                          <FormattedText text={place.name} />
                         </h4>
                         <span className="flex items-center gap-1 text-orange-600 font-bold text-sm bg-orange-50 px-2.5 py-1 rounded-lg">
-                          <Star className="w-3.5 h-3.5 fill-orange-500" />{" "}
-                          {place.rating}
+                          <Star className="w-3.5 h-3.5 fill-orange-500" /> {place.rating}
                         </span>
                       </div>
                       <div className="space-y-2 mb-3">
                         <p className="text-xs text-gray-500 flex items-start gap-2">
                           <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5 text-orange-500" />
-                          <span>{place.address}</span>
+                          <span>
+                            <FormattedText text={place.address} />
+                          </span>
                         </p>
                         <p className="text-xs text-gray-500 flex items-center gap-2">
                           <Clock className="w-4 h-4 flex-shrink-0 text-orange-500" />
@@ -512,10 +530,7 @@ export default function FoodDetail() {
           </div>
 
           {/* REVIEWS SECTION */}
-          <div
-            id="ulasan-section"
-            className="bg-white rounded-3xl shadow-lg border border-orange-100 overflow-hidden mb-6"
-          >
+          <div id="ulasan-section" className="bg-white rounded-3xl shadow-lg border border-orange-100 overflow-hidden mb-6">
             <div className="bg-gradient-to-r from-orange-500 to-amber-500 p-6 md:p-8 text-white">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
@@ -525,9 +540,7 @@ export default function FoodDetail() {
                   </h2>
                   {avgRating ? (
                     <p className="text-white/90">
-                      Rating{" "}
-                      <span className="font-bold text-white">{avgRating}</span>{" "}
-                      dari {reviews.length} ulasan
+                      Rating <span className="font-bold text-white">{avgRating}</span> dari {reviews.length} ulasan
                     </p>
                   ) : (
                     <p className="text-white/90">Belum ada ulasan</p>
@@ -546,9 +559,7 @@ export default function FoodDetail() {
               {showReviewForm && isAuthenticated && (
                 <div className="border-2 border-orange-200 rounded-2xl p-5 bg-orange-50/50 space-y-4 animate-fade-in">
                   <div>
-                    <p className="text-sm font-semibold text-gray-700 mb-3">
-                      Rating Anda:
-                    </p>
+                    <p className="text-sm font-semibold text-gray-700 mb-3">Rating Anda:</p>
                     <div className="flex items-center gap-2">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <button
@@ -587,7 +598,6 @@ export default function FoodDetail() {
                 </div>
               )}
 
-              {/* PERBAIKAN SYNTAX ERROR DI SINI */}
               {reviewsLoading ? (
                 <div className="text-center py-12">
                   <div className="w-12 h-12 border-4 border-orange-200 border-t-orange-500 rounded-full animate-spin mx-auto mb-4"></div>
@@ -597,17 +607,12 @@ export default function FoodDetail() {
                 <div className="text-center py-12 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
                   <div className="text-5xl mb-3">💬</div>
                   <p className="text-gray-500 font-medium">Belum ada ulasan</p>
-                  <p className="text-gray-400 text-sm mt-1">
-                    Jadilah yang pertama memberikan penilaian!
-                  </p>
+                  <p className="text-gray-400 text-sm mt-1">Jadilah yang pertama memberikan penilaian!</p>
                 </div>
               ) : (
                 <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
                   {reviews.map((review, index) => (
-                    <div
-                      key={review.id || index}
-                      className="border-b border-gray-100 last:border-0 pb-5 last:pb-0"
-                    >
+                    <div key={review.id || index} className="border-b border-gray-100 last:border-0 pb-5 last:pb-0">
                       <div className="flex items-start gap-4">
                         <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-400 to-amber-400 flex items-center justify-center text-lg font-bold text-white flex-shrink-0 shadow-md">
                           {review.user_avatar ? (
@@ -617,11 +622,7 @@ export default function FoodDetail() {
                               className="w-12 h-12 rounded-full object-cover"
                               onError={(e) => {
                                 e.currentTarget.style.display = "none";
-                                e.currentTarget.parentElement!.textContent = (
-                                  review.user_name || "U"
-                                )
-                                  .charAt(0)
-                                  .toUpperCase();
+                                e.currentTarget.parentElement!.textContent = (review.user_name || "U").charAt(0).toUpperCase();
                               }}
                             />
                           ) : (
@@ -632,7 +633,7 @@ export default function FoodDetail() {
                           <div className="flex items-center justify-between mb-2">
                             <div>
                               <p className="font-bold text-gray-800">
-                                {review.user_name || "Anonymous"}
+                                <FormattedText text={review.user_name || "Anonymous"} />
                               </p>
                               <div className="flex items-center gap-2 mt-1">
                                 <div className="flex text-yellow-400 text-sm">
@@ -648,24 +649,18 @@ export default function FoodDetail() {
                             </div>
                             <span className="text-xs text-gray-400">
                               {review.visited_date ||
-                                (review.created_at
-                                  ? new Date(
-                                      review.created_at,
-                                    ).toLocaleDateString("id-ID")
-                                  : "Baru saja")}
+                                (review.created_at ? new Date(review.created_at).toLocaleDateString("id-ID") : "Baru saja")}
                             </span>
                           </div>
                           <p className="text-gray-600 leading-relaxed text-sm">
-                            {review.comment}
+                            <FormattedText text={review.comment} />
                           </p>
 
                           {review.reply_from_owner && (
                             <div className="mt-3 bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl p-4 text-sm border-l-4 border-orange-400">
-                              <p className="font-bold text-orange-800 mb-1 text-xs uppercase tracking-wide">
-                                Balasan Pemilik
-                              </p>
+                              <p className="font-bold text-orange-800 mb-1 text-xs uppercase tracking-wide">Balasan Pemilik</p>
                               <p className="text-gray-700">
-                                {review.reply_from_owner}
+                                <FormattedText text={review.reply_from_owner} />
                               </p>
                             </div>
                           )}
@@ -680,14 +675,8 @@ export default function FoodDetail() {
         </div>
       </div>
 
-      <LoginModal
-        isOpen={showLogin}
-        onClose={() => setShowLogin(false)}
-        onSuccess={handleLoginSuccess}
-      />
-      {mapModal && (
-        <MapModal place={mapModal} onClose={() => setMapModal(null)} />
-      )}
+      <LoginModal isOpen={showLogin} onClose={() => setShowLogin(false)} onSuccess={handleLoginSuccess} />
+      {mapModal && <MapModal place={mapModal} onClose={() => setMapModal(null)} />}
 
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
@@ -725,13 +714,9 @@ function AccordionSection({
       >
         <div className="flex items-center gap-3">
           <span className="text-2xl">{icon}</span>
-          <h2 className="text-base md:text-lg font-bold text-gray-800">
-            {title}
-          </h2>
+          <h2 className="text-base md:text-lg font-bold text-gray-800">{title}</h2>
         </div>
-        <div
-          className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${isOpen ? "bg-orange-100 rotate-180" : "bg-gray-100"}`}
-        >
+        <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${isOpen ? "bg-orange-100 rotate-180" : "bg-gray-100"}`}>
           <ChevronDown className="w-5 h-5 text-orange-600" />
         </div>
       </button>
@@ -745,22 +730,10 @@ function AccordionSection({
   );
 }
 
-function NutriBadge({
-  label,
-  value,
-  color,
-}: {
-  label: string;
-  value: string;
-  color: string;
-}) {
+function NutriBadge({ label, value, color }: { label: string; value: string; color: string }) {
   return (
-    <div
-      className={`bg-gradient-to-br ${color} rounded-2xl p-4 text-center text-white shadow-lg transform hover:scale-105 transition-transform`}
-    >
-      <p className="text-[11px] font-bold uppercase tracking-wider opacity-90 mb-1.5">
-        {label}
-      </p>
+    <div className={`bg-gradient-to-br ${color} rounded-2xl p-4 text-center text-white shadow-lg transform hover:scale-105 transition-transform`}>
+      <p className="text-[11px] font-bold uppercase tracking-wider opacity-90 mb-1.5">{label}</p>
       <p className="font-bold text-lg">{value}</p>
     </div>
   );
