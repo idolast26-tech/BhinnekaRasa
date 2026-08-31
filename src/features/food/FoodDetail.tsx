@@ -25,10 +25,6 @@ interface MapModalProps {
   onClose: () => void;
 }
 
-// ─── Helper: Format teks dengan italic otomatis untuk bahasa asing ───────────
-// Mendeteksi:
-// 1. Markdown italic: *teks* atau _teks_
-// 2. Skrip non-Latin: Arab, CJK (Mandarin/Jepang/Korea), Hangul, Devanagari, Thai
 const FOREIGN_SCRIPT_REGEX =
   /[\p{Script=Arabic}\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Devanagari}\p{Script=Thai}\p{Script=Bengali}\p{Script=Tamil}\p{Script=Telugu}\p{Script=Gujarati}\p{Script=Gurmukhi}\p{Script=Myanmar}\p{Script=Khmer}\p{Script=Lao}\p{Script=Tibetan}]+/u;
 
@@ -59,7 +55,8 @@ function FormattedText({
           return (
             <em
               key={i}
-              className={`italic text-orange-700 font-medium not-italic ${className}`}
+              className={`italic ${className}`}
+              style={{ fontStyle: "italic", fontWeight: "inherit", color: "inherit" }}
             >
               {inner}
             </em>
@@ -71,7 +68,8 @@ function FormattedText({
           return (
             <em
               key={i}
-              className={`italic text-orange-700 font-medium ${className}`}
+              className={`italic ${className}`}
+              style={{ fontStyle: "italic", fontWeight: "inherit", color: "inherit" }}
             >
               {part}
             </em>
